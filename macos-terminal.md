@@ -14,3 +14,6 @@
 
 # View .md file
 command + shift + v 
+
+# Open terminal in VS Code
+control + `
