@@ -2,7 +2,7 @@
 
 A small event-driven microservices exercise: five independent services that talk to each other over HTTP.
 
-![Architecture diagram](./architecture-diagram.svg)
+![Architecture diagram](.ś/architecture-diagram.svg)ś
 
 ## Services
 
