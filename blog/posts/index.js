@@ -12,8 +12,8 @@ const posts = {};
 /*
 EXAMPLE DATA STRUCTURE:
 {
-  "postId1": { "id": "postId1", "title": "Post Title 1", "comments": [] },
-  "postId2": { "id": "postId2", "title": "Post Title 2", "comments": [] }
+  "postId1": { "id": "postId1", "title": "Post Title 1" },
+  "postId2": { "id": "postId2", "title": "Post Title 2" }
 }
 */
 
@@ -25,11 +25,7 @@ app.post('/posts', (req, res) => {
     const id = randomBytes(4).toString('hex');
 
     const { title } = req.body;
-    posts[id] = {
-        id,
-        title,
-        comments: [],
-    };
+    posts[id] = { id, title };
 
     res.status(201).send(posts[id]);
 
@@ -41,21 +37,6 @@ app.post('/posts', (req, res) => {
             data: posts[id],
         }),
     }).catch((err) => console.error('Failed to publish PostCreated:', err.message));
-});
-
-app.post('/events', (req, res) => {
-    const { type, data } = req.body;
-
-    if (type === 'CommentCreated') {
-        const { id, content, postId } = data;
-        const post = posts[postId];
-
-        if (post) {
-            post.comments.push({ id, content });
-        }
-    }
-
-    res.send({});
 });
 
 const server = app.listen(3000, () => {

@@ -12,13 +12,14 @@ function PostCreate({ onCreated }) {
 
     setSubmitting(true);
     try {
-      await fetch(`${POSTS_URL}/posts`, {
+      const response = await fetch(`${POSTS_URL}/posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title }),
       });
+      const post = await response.json();
       setTitle('');
-      onCreated();
+      onCreated(post);
     } finally {
       setSubmitting(false);
     }

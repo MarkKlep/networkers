@@ -3,25 +3,38 @@ import PostCreate from './PostCreate';
 import PostList from './PostList';
 import './App.css';
 
-const POSTS_URL = 'http://localhost:3000';
+const QUERY_URL = 'http://localhost:4002';
 
 function App() {
-  const [posts, setPosts] = useState({});
+  const [posts, setPosts] = useState([]);
 
+  // Merge instead of replace: the query service builds its view from events
+  // it may not have processed yet (e.g. right after a post/comment was just
+  // created), so a fetch can still be missing something we already know
+  // about. Layer the authoritative list on top by id instead of dropping it.
   const fetchPosts = useCallback(async () => {
-    const response = await fetch(`${POSTS_URL}/posts`);
+    const response = await fetch(`${QUERY_URL}/posts`);
     const data = await response.json();
-    setPosts(data);
+    setPosts((current) => {
+      const byId = new Map(current.map((post) => [post.id, post]));
+      data.forEach((post) => byId.set(post.id, post));
+      return Array.from(byId.values());
+    });
   }, []);
 
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
 
+  const handlePostCreated = (post) => {
+    setPosts((current) => [...current, { ...post, comments: [] }]);
+    fetchPosts();
+  };
+
   return (
     <div className="App">
       <h1>Blog</h1>
-      <PostCreate onCreated={fetchPosts} />
+      <PostCreate onCreated={handlePostCreated} />
       <PostList posts={posts} onCommentAdded={fetchPosts} />
     </div>
   );

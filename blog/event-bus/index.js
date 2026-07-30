@@ -8,7 +8,7 @@ app.use(cors());
 // Every other service's /events endpoint. Add a URL here whenever a new
 // service needs to receive broadcasts.
 const SUBSCRIBERS = [
-  'http://localhost:3000/events', // posts (consumes CommentCreated)
+  'http://localhost:4002/events', // query (consumes PostCreated, CommentCreated)
 ];
 
 app.post('/events', (req, res) => {
