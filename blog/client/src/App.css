@@ -50,6 +50,20 @@ h1 {
   font-size: 0.9em;
 }
 
+.Comment-pending {
+  color: #999;
+  font-style: italic;
+}
+
+.Comment-rejected {
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
+.Comment-status {
+  font-size: 0.85em;
+}
+
 .CommentCreate {
   display: flex;
   gap: 8px;
