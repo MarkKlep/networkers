@@ -4,6 +4,17 @@ A small event-driven microservices exercise: six independent services that talk 
 
 ![Architecture diagram](./architecture-diagram.svg)
 
+## Quick start
+
+Each service still has its own dependencies and must be installed once on its own (see [`CLAUDE.md`](./CLAUDE.md) for the per-service setup, including `blog/query`'s Python venv). Once that's done, run everything at once from the repo root:
+
+```
+npm install
+npm run dev
+```
+
+This starts all six services together with labeled, color-coded output, and a single Ctrl+C stops all of them.
+
 ## Services
 
 | Service | Stack | Port | Role |

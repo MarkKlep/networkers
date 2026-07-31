@@ -10,7 +10,7 @@ This repo (`py-macos`) is currently a loose collection of learning/practice mate
 - `README.md` / `architecture-diagram.svg` — overview and diagram of the `blog/` microservices, at the repo root (not inside `blog/`).
 - `blog/` — a microservices exercise: six independent projects (four Node/npm services, one Python service, one React client) wired together over HTTP, with no root-level build, docker-compose, or workspace config. Each must be installed and run separately, and `blog/query` uses a different toolchain (Python/pip) than the rest (Node/npm).
 
-There is no root `package.json`, monorepo tooling, or shared build system. Treat each subproject under `blog/` as its own working directory for install/run/test purposes.
+There's a root `package.json`, but it's a convenience runner only (`concurrently`), not a monorepo/workspace setup — each subproject under `blog/` still has its own dependencies and is its own working directory for install/run/test purposes.
 
 ## `blog/` architecture
 
@@ -75,7 +75,9 @@ Commands (from `blog/client/`):
 
 ## Running the full stack
 
-Start in this order (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
+`npm install && npm run dev` from the repo root starts all six services at once (via `concurrently`, per the root `package.json`) with color-coded, prefixed output, and a single Ctrl+C stops everything cleanly. Requires `blog/query`'s venv to already be set up (see below) and each `blog/*` subproject's own `npm install` to have been run at least once.
+
+To start services individually instead (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
 
 ## Working conventions
 

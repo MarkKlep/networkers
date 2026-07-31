@@ -1,0 +1,11 @@
+{
+  "name": "blog-dev",
+  "private": true,
+  "description": "Convenience runner only - each blog/* service is still its own independent project with its own dependencies.",
+  "scripts": {
+    "dev": "concurrently -k -n event-bus,query,moderation,posts,comments,client -c blue,green,magenta,cyan,yellow,white \"npm run dev --prefix blog/event-bus\" \"bash -c 'cd blog/query && ./venv/bin/uvicorn main:app --reload --port 4002'\" \"npm run dev --prefix blog/moderation\" \"npm run dev --prefix blog/posts\" \"npm run dev --prefix blog/comments\" \"npm start --prefix blog/client\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
