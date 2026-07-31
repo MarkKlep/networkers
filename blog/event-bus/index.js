@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const axios = require('axios');
 
 const app = express();
 app.use(express.json());
@@ -22,19 +23,9 @@ app.post('/events', (req, res) => {
   SUBSCRIBERS
     .filter((subscriber) => subscriber.events.includes(event.type))
     .forEach((subscriber) => {
-      fetch(subscriber.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-      })
-        .then((res) => {
-          if (!res.ok) {
-            console.error(`Subscriber ${subscriber.url} rejected event with status ${res.status}`);
-          }
-        })
-        .catch((err) => {
-          console.error(`Failed to forward event to ${subscriber.url}:`, err.message);
-        });
+      axios.post(subscriber.url, event, {
+        headers: { 'Content-Type': 'application/json' }
+      });
     });
 
   res.send({ status: 'OK' });

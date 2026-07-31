@@ -21,11 +21,11 @@ function Post({ post, onCommentAdded }) {
     setComments((current) => [...current, comment]);
     onCommentAdded();
 
-    // The comment starts out "pending" and only flips to approved/rejected
-    // once the moderation service's verdict has round-tripped through the
-    // event bus, which is slower than the immediate refetch above. One
-    // delayed follow-up refetch is enough to pick up that status change
-    // without building out a full polling mechanism.
+    // The comment shows in full at first - flaggedTerms only arrive once
+    // the moderation service's verdict has round-tripped through the event
+    // bus, which is slower than the immediate refetch above. One delayed
+    // follow-up refetch is enough to pick up any masking without building
+    // out a full polling mechanism.
     setTimeout(onCommentAdded, 1500);
   };
 

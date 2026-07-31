@@ -50,18 +50,21 @@ h1 {
   font-size: 0.9em;
 }
 
-.Comment-pending {
-  color: #999;
-  font-style: italic;
+.MaskedWord {
+  cursor: pointer;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 3px;
+  padding: 0 2px;
+  letter-spacing: -1px;
+  user-select: none;
 }
 
-.Comment-rejected {
-  color: #b91c1c;
-  text-decoration: line-through;
-}
-
-.Comment-status {
-  font-size: 0.85em;
+.MaskedWord-revealed {
+  background: transparent;
+  color: inherit;
+  letter-spacing: normal;
+  text-decoration: underline dotted #991b1b;
 }
 
 .CommentCreate {

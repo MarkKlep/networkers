@@ -1,3 +1,5 @@
+import CommentContent from './CommentContent';
+
 function CommentList({ comments }) {
   if (!comments.length) {
     return <p className="CommentList-empty">No comments yet.</p>;
@@ -6,14 +8,8 @@ function CommentList({ comments }) {
   return (
     <ul className="CommentList">
       {comments.map((comment) => (
-        <li key={comment.id} className={`Comment Comment-${comment.status || 'approved'}`}>
-          {comment.content}
-          {comment.status === 'pending' && (
-            <span className="Comment-status"> (pending review)</span>
-          )}
-          {comment.status === 'rejected' && (
-            <span className="Comment-status"> (flagged by moderation)</span>
-          )}
+        <li key={comment.id} className="Comment">
+          <CommentContent content={comment.content} flaggedTerms={comment.flaggedTerms} />
         </li>
       ))}
     </ul>

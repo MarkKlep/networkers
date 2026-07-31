@@ -49,7 +49,7 @@ def handle_event(event: Event):
                 {
                     "id": event.data["id"],
                     "content": event.data["content"],
-                    "status": event.data.get("status", "pending"),
+                    "flaggedTerms": event.data.get("flaggedTerms", []),
                 }
             )
 
@@ -58,7 +58,7 @@ def handle_event(event: Event):
         if post:
             for comment in post["comments"]:
                 if comment["id"] == event.data["id"]:
-                    comment["status"] = event.data["status"]
+                    comment["flaggedTerms"] = event.data.get("flaggedTerms", [])
                     break
 
     return {}
