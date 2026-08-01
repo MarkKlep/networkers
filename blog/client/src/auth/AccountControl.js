@@ -13,7 +13,7 @@ function AccountControl() {
   if (user) {
     return (
       <div className="Account">
-        {user.picture && <img className="Account-avatar" src={user.picture} alt="User Icon" />}
+        {user.picture && <img className="Account-avatar" src={user.picture} alt="" />}
         <span className="Account-name">{user.name}</span>
         <button className="Account-signout" onClick={signOut}>
           Sign out
