@@ -13,7 +13,7 @@ A job-search networking tool, organised entirely around **the company you want t
 
 Step 3 is why posts exist. They started life as a generic blog from a microservices tutorial; they are now company-scoped asks, and the empty state of the referral search ("none of your connections list X") is the deliberate entry point into posting. Any change here should keep that loop intact — a post with no company breaks the model and is rejected by the `posts` service.
 
-Known gap: there are **no user accounts**. Your connections are private to your machine, but posts are one shared board, so "ask the community" only becomes real with multi-user support.
+Posts are a shared board, so multi-user identity matters: **sign-in is Google or email/password** (`auth/`, `blog/client/src/auth/`), gating post/comment *creation* — reading stays open to everyone. See [Authentication](#authentication) below. Your connections stay private to your machine either way; only posts/comments are shared, and now they carry a real author.
 
 ## Repository overview
 
@@ -23,7 +23,8 @@ This repo (`py-macos`) is currently a loose collection of learning/practice mate
 - `README.md` / `architecture-diagram.svg` — overview and diagram of the `blog/` microservices, at the repo root (not inside `blog/`).
 - `blog/` — a microservices exercise: six independent projects (four Node/npm services, one Python service, one React client) wired together over HTTP. Each must be installed and run separately, and `blog/query` uses a different toolchain (Python/pip) than the rest (Node/npm).
 - `referrals/` — a backend service for the client's `/referrals` page. It shares **no data** with `blog/` and is deliberately not on the event bus; only the frontend is shared (see below).
-- `docker-compose.yml` — builds and runs everything (all six `blog/` services plus `referrals`) from per-service `Dockerfile`s.
+- `auth/` — owns user accounts and sign-in (Google + email/password); see [Authentication](#authentication). Not on the event bus either.
+- `docker-compose.yml` — builds and runs everything (all six `blog/` services, `auth`, and `referrals`) from per-service `Dockerfile`s.
 
 There's a root `package.json`, but it's a convenience runner only (`concurrently`), not a monorepo/workspace setup — each subproject still has its own dependencies and is its own working directory for install/run/test purposes.
 
@@ -38,13 +39,43 @@ Inter-service URLs differ by how you run the stack: locally each service is on `
 
 ## Persistence
 
-`posts`, `comments`, and `query` each keep a local SQLite file at `<service>/data/data.sqlite` — one database per service, matching the microservice principle that each owns its own data; nothing shares a database. No server process to run: `better-sqlite3` (Node) and the stdlib `sqlite3` module (Python) both talk to a plain file, so `npm run dev` needs nothing extra beyond what it already does, and there's no connection string to configure.
+`posts`, `comments`, `query`, and `auth` each keep a local SQLite file at `<service>/data/data.sqlite` — one database per service, matching the microservice principle that each owns its own data; nothing shares a database. No server process to run: `better-sqlite3` (Node) and the stdlib `sqlite3` module (Python) both talk to a plain file, so `npm run dev` needs nothing extra beyond what it already does, and there's no connection string to configure.
 
 `referrals/data/connections.json` is the same idea predating this pattern — a plain file instead of SQLite because it's a single blob written wholesale on upload, not queried, but persisted for the same reason.
 
-All four `data/` directories are gitignored — this is local run state, not something to commit — and each is bind-mounted as a Docker volume in `docker-compose.yml` (`./blog/posts/data:/app/data`, etc.). **Both matter equally**: skip the gitignore and you risk committing real people's data (`referrals/`); skip the volume mount and Docker silently throws every away on `docker-compose down`, since the file would otherwise live only in the container's writable layer.
+All five `data/` directories are gitignored — this is local run state, not something to commit — and each is bind-mounted as a Docker volume in `docker-compose.yml` (`./blog/posts/data:/app/data`, etc.). **Both matter equally**: skip the gitignore and you risk committing real people's data (`referrals/` connections; `auth/` emails and password hashes); skip the volume mount and Docker silently throws it all away on `docker-compose down`, since the file would otherwise live only in the container's writable layer.
 
 `query`'s tables (`posts`, `comments`) are written to directly from its `/events` handler — `INSERT OR REPLACE` on `PostCreated`/`CommentCreated`, `UPDATE ... WHERE id = ?` on `CommentModerated` — using a fresh `sqlite3.connect()` per request rather than one shared connection, since FastAPI runs these sync `def` handlers across a thread pool and SQLite connections aren't safe to share across threads without serializing access; a new connection per request sidesteps that entirely at negligible cost for this traffic volume.
+
+`posts` and `comments` each added `authorId`/`authorName`/`authorPicture` columns (and `query`'s copies of both tables did too) after already having schemas on disk. `CREATE TABLE IF NOT EXISTS` is a no-op on a table that already exists, so each service also runs a small startup check — `PRAGMA table_info(...)`, then `ALTER TABLE ... ADD COLUMN` for anything missing — otherwise every insert/select referencing those columns would crash the service the moment it started against pre-existing data. Any future schema change needs the same treatment, not just an edit to the `CREATE TABLE` string.
+
+## Authentication
+
+Two ways to sign in — **Google, or email/password** — both handled by a dedicated `auth` service (Express, port 4007) that owns the user database and issues its own session tokens. `posts` and `comments` don't know *how* someone signed in; they just forward whatever token they're given to `auth`'s `POST /auth/verify` and trust the response. This wasn't the original shape — Google-only auth had `posts` and `comments` each verify Google tokens directly — but duplicating two different verification schemes (Google's public keys, and a password scheme) across two services was a worse trade than centralizing identity into one place. Adding a third sign-in method later means changing `auth` only.
+
+**Reading is never gated.** Only creating a post (`PostCreate.js`) or a comment (`CommentCreate.js`) requires sign-in — each renders a sign-in panel (`blog/client/src/auth/AuthPanel.js`) in place of the form when signed out, not a page-level wall. `AccountControl.js` is the nav's collapsed "Sign in" button (expands to the same panel) or the signed-in avatar/name/sign-out.
+
+### `auth` — Identity (Express + better-sqlite3, port 4007)
+
+Owns a `users` table: `id, email (unique), passwordHash (null for Google-only accounts), googleId (unique, null for password-only accounts), name, picture, createdAt`. Signing in by either method *is* registering — there's no separate account-creation step; the first time an email or a Google account is seen, a row is created for it. If a Google sign-in's email matches an existing password account, the Google identity is linked to it (`googleId` attached) rather than creating a second, disconnected user.
+
+Endpoints:
+- `POST /auth/register` — `{ name, email, password }`; password must be ≥8 characters; rejects a duplicate email with the *same* generic error a wrong login gets, so this endpoint can't be used to test which emails are already registered; hashes with `bcryptjs` (cost 12); returns `{ token, user, exp }`
+- `POST /auth/login` — `{ email, password }`; wrong password and unknown email return the identical `401` for the same reason; returns `{ token, user, exp }`
+- `POST /auth/google` — `{ idToken }`; the only place in the app that still verifies a Google ID token, via `google-auth-library`'s `OAuth2Client.verifyIdToken` (signature against Google's public keys, audience, expiry); returns `{ token, user, exp }`
+- `POST /auth/verify` — `Authorization: Bearer <token>` header; verifies this service's own JWT (not Google's) and returns `{ user }` or `401`. This is what `posts`/`comments` call on every write.
+
+`token` is a JWT this service signs itself with `APP_JWT_SECRET`, 7-day expiry. **This secret is real** (unlike the Google client ID below) — anyone who has it can forge a valid session for any user, so it is never hardcoded in source. If `APP_JWT_SECRET` isn't set, `auth/index.js` generates a random one for that run and warns loudly that every restart invalidates every session; set it yourself (`export APP_JWT_SECRET=$(openssl rand -hex 32)`, or in a repo-root `.env` for `docker-compose.yml`) to keep sessions across restarts.
+
+The Google **client ID is not a secret** (it's meant to be visible in frontend code) and is hardcoded as a plain constant in two places that must agree: `blog/client/src/config.js` and `auth/index.js`. **To get a real one**: console.cloud.google.com → APIs & Services → Credentials → Create Credentials → OAuth client ID → "Web application" → add `http://localhost:3001` under Authorized JavaScript origins → paste the resulting ID into both files in place of the `YOUR_GOOGLE_CLIENT_ID...` placeholder.
+
+Run: `cd auth && npm install && npm run dev` (nodemon).
+
+### How `posts`/`comments` use it
+
+Both read `AUTH_URL` (env var, `localhost` fallback locally / `http://auth:4007` in Docker, same pattern as `EVENT_BUS_URL`). Their `requireUser` middleware takes the request's `Authorization` header, forwards it verbatim to `auth`'s `/auth/verify`, and either gets a `user` object back (proceed, stamp `authorId`/`authorName`/`authorPicture` onto the post/comment) or a non-2xx (401 to the client). Neither service holds `APP_JWT_SECRET` or the Google client ID, and neither has `google-auth-library` as a dependency any more — that whole concern lives only in `auth`. `GET` endpoints on both services stay unauthenticated.
+
+`query`'s `posts`/`comments` tables carry the same three author columns, populated from `PostCreated`/`CommentCreated` event data, so `GET /posts` returns author info without `query` doing any verification of its own — it trusts `posts`/`comments` the same way it already trusts them for everything else in this event-driven design.
 
 ## `blog/` architecture
 
@@ -86,23 +117,23 @@ No persistence, no HTTP endpoints other than the event listener — purely event
 Run: `cd blog/moderation && npm install && npm run dev` (nodemon).
 
 ### `blog/posts` — Posts API (Express, port 3000)
-SQLite-backed (see [Persistence](#persistence)). A post is `{ id, title, company, type, createdAt }` — **`company` is required**, because a post that isn't about a company can't appear on any company page and has no place in the product. `type` is one of `referral` (looking for an intro), `question` (asking about the company), or `offer` (willing to refer); anything else is a 400. Endpoints:
-- `GET /posts` — list all posts (no comments — that's `query`'s job)
-- `POST /posts` — create a post (`{ title, company, type? }`), assigns a random hex `id`, publishes `PostCreated`
+SQLite-backed (see [Persistence](#persistence)). A post is `{ id, title, company, type, createdAt, authorId, authorName, authorPicture }` — **`company` is required**, because a post that isn't about a company can't appear on any company page and has no place in the product. `type` is one of `referral` (looking for an intro), `question` (asking about the company), or `offer` (willing to refer); anything else is a 400. Endpoints:
+- `GET /posts` — list all posts (no comments — that's `query`'s job); no auth required
+- `POST /posts` — create a post (`{ title, company, type? }` body, `Authorization: Bearer <session token>` header); requires sign-in (see [Authentication](#authentication)), assigns a random hex `id`, publishes `PostCreated`
 
 Run: `cd blog/posts && npm install && npm run dev` (nodemon).
 
 ### `blog/comments` — Comments API (Express, port 4000)
-SQLite-backed (see [Persistence](#persistence)). Unchanged by the moderation feature — no `status` field, no `/events` listener; it just owns content. Endpoints:
-- `GET /posts/:postId/comments` — list comments for a post
-- `POST /posts/:postId/comments` — add a comment (`{ content }` in body), assigns a random hex `id`, publishes `CommentCreated`
+SQLite-backed (see [Persistence](#persistence)). Unchanged by the moderation feature — no `status` field, no `/events` listener; it just owns content (now including who wrote it). Endpoints:
+- `GET /posts/:postId/comments` — list comments for a post; no auth required
+- `POST /posts/:postId/comments` — add a comment (`{ content }` body, `Authorization: Bearer <session token>` header); requires sign-in, assigns a random hex `id`, publishes `CommentCreated`
 
 Run: `cd blog/comments && npm install && npm run dev` (nodemon).
 
 Note: `comments` does not validate that `postId` refers to a real post — any id is accepted and stored.
 
 ### `blog/client` — React frontend (Create React App, port 3001)
-`App.js` is only the shell — nav plus routes. `CompanyPage.js` loads a company's posts from `query` and renders `PostCreate` + `PostList`; each `Post` shows its type as a badge, its embedded `comments`, and a `CommentCreate` form that `POST`s to `comments` directly. `CommentContent` splits a comment on its `flaggedTerms` and renders each as a `MaskedWord` — shown as `█` until clicked, so a flagged word is hidden rather than the whole comment being rejected.
+`App.js` is only the shell — nav, `AccountControl` (sign-in button / avatar + sign-out), and routes. `CompanyPage.js` loads a company's posts from `query` and renders `PostCreate` + `PostList`; each `Post` shows its type as a badge, its author, its embedded `comments` (each now with its own author via `PersonAvatar`), and a `CommentCreate` form that `POST`s to `comments` directly, the current session token attached. `CommentContent` splits a comment on its `flaggedTerms` and renders each as a `MaskedWord` — shown as `█` until clicked, so a flagged word is hidden rather than the whole comment being rejected. `PostCreate`/`CommentCreate` render `AuthPanel` instead of their form when signed out (see [Authentication](#authentication)).
 
 Because `query`'s view lags the writes by however long event propagation takes, both `CompanyPage.js` (for new posts) and `Post.js` (for new comments) apply the created item to local state immediately from the write response, then merge (never blindly replace) subsequent refetches by `id` — this is what prevents the "have to reload to see it" symptom and avoids a freshly-created item flickering away if a refetch lands before its event has propagated. `Post.js` additionally schedules one delayed follow-up refetch (1.5s) after adding a comment, since `flaggedTerms` always arrives after the immediate refetch, not before.
 
@@ -113,11 +144,11 @@ Commands (from `blog/client/`):
 
 ## Running the full stack
 
-`npm install && npm run dev` from the repo root starts all **seven** processes at once (the six `blog/` services plus `referrals`, via `concurrently`) with color-coded, prefixed output, and a single Ctrl+C stops everything cleanly. Requires `blog/query`'s venv to already be set up (see below) and each subproject's own `npm install` to have been run at least once.
+`npm install && npm run dev` from the repo root starts all **eight** processes at once (the six `blog/` services, `auth`, and `referrals`, via `concurrently`) with color-coded, prefixed output, and a single Ctrl+C stops everything cleanly. Requires `blog/query`'s venv to already be set up (see below) and each subproject's own `npm install` to have been run at least once.
 
-`npm run stop` frees every port the stack uses (3000, 3001, 4000, 4002, 4003, 4005, 4006). Needed because a nodemon child can outlive its parent, so a crashed or force-killed run can leave a port held.
+`npm run stop` frees every port the stack uses (3000, 3001, 4000, 4002, 4003, 4005, 4006, 4007). Needed because a nodemon child can outlive its parent, so a crashed or force-killed run can leave a port held.
 
-To start services individually instead (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
+To start services individually instead (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `auth` (4007) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes and `auth` is up before `posts`/`comments` try to verify a token against it, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
 
 `docker-compose up` is the alternative to all of the above: it builds each service from its own `Dockerfile` and needs no local Node, Python, venv, or per-service `npm install`. Ports are published unchanged, so the browser still uses the same `localhost:<port>` URLs either way. `docker-compose down` stops everything.
 
@@ -149,8 +180,9 @@ Its UI lives in `blog/client` (see above); this service is API-only. Endpoints:
 - `GET /` — the UI
 - `POST /connections` — raw CSV as the request body (`text/csv`); parses, replaces the stored list, saves to disk
 - `GET /status` — `{ total, withoutCompany, savedAt }`; the UI calls this on load and skips the upload step when connections are already stored
-- `GET /search?company=` — connections whose company matches, best matches first
+- `GET /search?company=` — connections whose company matches, best matches first; empty query returns no matches (this is the "did I forget who I know at X" flow)
 - `GET /companies` — distinct companies with connection counts, most connections first (powers the browse chips)
+- `GET /connections` — every stored connection, unfiltered, sorted by first name; powers `ConnectionsTable` on `/connections`, which filters this client-side (substring match on company) rather than round-tripping per keystroke, since a LinkedIn export is small enough to hold in memory
 - `DELETE /connections` — forget the stored export
 
 Two things the parsing has to handle, both from the real export format:

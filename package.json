@@ -3,9 +3,9 @@
   "private": true,
   "description": "Convenience runner only - each blog/* service is still its own independent project with its own dependencies.",
   "scripts": {
-    "dev": "concurrently -k -n event-bus,query,moderation,posts,comments,referrals,client -c blue,green,magenta,cyan,yellow,red,white \"npm run dev --prefix blog/event-bus\" \"bash -c 'cd blog/query && ./venv/bin/uvicorn main:app --reload --port 4002'\" \"npm run dev --prefix blog/moderation\" \"npm run dev --prefix blog/posts\" \"npm run dev --prefix blog/comments\" \"npm run dev --prefix referrals\" \"npm start --prefix blog/client\"",
+    "dev": "concurrently -k -n event-bus,query,moderation,posts,comments,auth,referrals,client -c blue,green,magenta,cyan,yellow,gray,red,white \"npm run dev --prefix blog/event-bus\" \"bash -c 'cd blog/query && ./venv/bin/uvicorn main:app --reload --port 4002'\" \"npm run dev --prefix blog/moderation\" \"npm run dev --prefix blog/posts\" \"npm run dev --prefix blog/comments\" \"npm run dev --prefix auth\" \"npm run dev --prefix referrals\" \"npm start --prefix blog/client\"",
     "referrals": "npm run dev --prefix referrals",
-    "stop": "lsof -ti :3000 -ti :3001 -ti :4000 -ti :4002 -ti :4003 -ti :4005 -ti :4006 -sTCP:LISTEN | xargs -r kill -9 || true"
+    "stop": "lsof -ti :3000 -ti :3001 -ti :4000 -ti :4002 -ti :4003 -ti :4005 -ti :4006 -ti :4007 -sTCP:LISTEN | xargs -r kill -9 || true"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

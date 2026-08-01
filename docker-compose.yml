@@ -35,10 +35,12 @@ services:
       - "3000:3000"
     environment:
       - EVENT_BUS_URL=http://event-bus:4005
+      - AUTH_URL=http://auth:4007
     volumes:
       - ./blog/posts/data:/app/data
     depends_on:
       - event-bus
+      - auth
     networks:
       - blog-network
 
@@ -48,10 +50,30 @@ services:
       - "4000:4000"
     environment:
       - EVENT_BUS_URL=http://event-bus:4005
+      - AUTH_URL=http://auth:4007
     volumes:
       - ./blog/comments/data:/app/data
     depends_on:
       - event-bus
+      - auth
+    networks:
+      - blog-network
+
+  # Owns user identity - the only service that verifies Google tokens or
+  # checks a password, and the only one holding APP_JWT_SECRET. posts and
+  # comments call its /auth/verify instead of checking sign-in themselves.
+  # APP_JWT_SECRET defaults to empty here on purpose: unset, the service
+  # falls back to a random secret for that run (see auth/index.js) rather
+  # than docker-compose failing outright - same graceful behavior as `npm
+  # run dev`. Set it in a repo-root .env file to keep sessions across restarts.
+  auth:
+    build: ./auth
+    ports:
+      - "4007:4007"
+    environment:
+      - APP_JWT_SECRET=${APP_JWT_SECRET:-}
+    volumes:
+      - ./auth/data:/app/data
     networks:
       - blog-network
 
@@ -63,6 +85,7 @@ services:
       - query
       - posts
       - comments
+      - auth
       - referrals
     networks:
       - blog-network

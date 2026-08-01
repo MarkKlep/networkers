@@ -135,6 +135,14 @@ app.delete('/connections', (req, res) => {
   res.send(status());
 });
 
+// Every connection, unfiltered - powers the table view. /search stays
+// company-only and empty-query-returns-nothing, since that's the "did I
+// forget who I know at X" flow; this is the "show me everyone" flow.
+app.get('/connections', (req, res) => {
+  const all = [...connections].sort((a, b) => a.firstName.localeCompare(b.firstName));
+  res.send({ total: all.length, connections: all });
+});
+
 app.get('/search', (req, res) => {
   const query = (req.query.company || '').trim();
 

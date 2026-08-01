@@ -10,6 +10,13 @@ blog/posts/data/
 blog/comments/data/
 blog/query/data/
 
+# User accounts (emails, hashed passwords) - definitely never commit this.
+auth/data/
+
+# Holds APP_JWT_SECRET for docker-compose - a real secret, unlike the
+# hardcoded Google client ID elsewhere in this repo. Never commit this.
+.env
+
 # Personal Claude Code settings for this project (permissions, hooks) -
 # .claude/agents/ is shared, this file isn't.
 .claude/settings.local.json
