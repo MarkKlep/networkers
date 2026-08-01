@@ -54,17 +54,39 @@ def init_db():
                 title TEXT NOT NULL,
                 company TEXT NOT NULL,
                 type TEXT NOT NULL,
-                createdAt TEXT
+                createdAt TEXT,
+                authorId TEXT,
+                authorName TEXT,
+                authorPicture TEXT
             );
             CREATE TABLE IF NOT EXISTS comments (
                 id TEXT PRIMARY KEY,
                 postId TEXT NOT NULL,
                 content TEXT NOT NULL,
-                flaggedTerms TEXT NOT NULL DEFAULT '[]'
+                flaggedTerms TEXT NOT NULL DEFAULT '[]',
+                authorId TEXT,
+                authorName TEXT,
+                authorPicture TEXT
             );
             CREATE INDEX IF NOT EXISTS idx_comments_postId ON comments (postId);
             """
         )
+
+        # CREATE TABLE IF NOT EXISTS is a no-op on a database that already
+        # exists from before Google sign-in was added - the author columns
+        # above never land on it, and every insert/select referencing them
+        # would crash the service on boot. Add anything missing explicitly.
+        for table, column in [
+            ("posts", "authorId"),
+            ("posts", "authorName"),
+            ("posts", "authorPicture"),
+            ("comments", "authorId"),
+            ("comments", "authorName"),
+            ("comments", "authorPicture"),
+        ]:
+            existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
 
 
 init_db()
@@ -111,6 +133,9 @@ def load_posts() -> list[dict[str, Any]]:
                 "id": row["id"],
                 "content": row["content"],
                 "flaggedTerms": json.loads(row["flaggedTerms"]),
+                "authorId": row["authorId"],
+                "authorName": row["authorName"],
+                "authorPicture": row["authorPicture"],
             }
         )
 
@@ -121,6 +146,9 @@ def load_posts() -> list[dict[str, Any]]:
             "company": row["company"],
             "type": row["type"],
             "createdAt": row["createdAt"],
+            "authorId": row["authorId"],
+            "authorName": row["authorName"],
+            "authorPicture": row["authorPicture"],
             "comments": comments_by_post.get(row["id"], []),
         }
         for row in post_rows
@@ -169,8 +197,9 @@ def handle_event(event: Event):
         if event.type == "PostCreated":
             conn.execute(
                 """
-                INSERT OR REPLACE INTO posts (id, title, company, type, createdAt)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO posts
+                    (id, title, company, type, createdAt, authorId, authorName, authorPicture)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.data["id"],
@@ -178,20 +207,27 @@ def handle_event(event: Event):
                     event.data.get("company", ""),
                     event.data.get("type", "referral"),
                     event.data.get("createdAt"),
+                    event.data.get("authorId"),
+                    event.data.get("authorName"),
+                    event.data.get("authorPicture"),
                 ),
             )
 
         if event.type == "CommentCreated":
             conn.execute(
                 """
-                INSERT OR REPLACE INTO comments (id, postId, content, flaggedTerms)
-                VALUES (?, ?, ?, ?)
+                INSERT OR REPLACE INTO comments
+                    (id, postId, content, flaggedTerms, authorId, authorName, authorPicture)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.data["id"],
                     event.data["postId"],
                     event.data["content"],
                     json.dumps(event.data.get("flaggedTerms", [])),
+                    event.data.get("authorId"),
+                    event.data.get("authorName"),
+                    event.data.get("authorPicture"),
                 ),
             )
 

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { POSTS_URL } from './config';
+import { useAuth } from './auth/AuthContext';
+import AuthPanel from './auth/AuthPanel';
 
 // The three reasons someone posts about a company. `referral` is the default
 // because "who can introduce me?" is the question this app exists to answer.
@@ -10,6 +12,7 @@ export const POST_TYPES = [
 ];
 
 function PostCreate({ company, onCreated }) {
+  const { user, idToken } = useAuth();
   const [title, setTitle] = useState('');
   const [type, setType] = useState('referral');
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +28,10 @@ function PostCreate({ company, onCreated }) {
     try {
       const response = await fetch(`${POSTS_URL}/posts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ title, company, type }),
       });
       const post = await response.json();
@@ -41,6 +47,17 @@ function PostCreate({ company, onCreated }) {
       setSubmitting(false);
     }
   };
+
+  // Posting requires an identity to attach to the post - reading never did
+  // and still doesn't. Shown in place of the form, not blocking the page.
+  if (!user) {
+    return (
+      <div className="SignInPrompt">
+        <p>Sign in to post about {company}.</p>
+        <AuthPanel />
+      </div>
+    );
+  }
 
   return (
     <form className="PostCreate" onSubmit={handleSubmit}>

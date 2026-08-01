@@ -9,8 +9,6 @@ const TYPE_LABELS = {
   offer: 'Offering to refer',
 };
 
-// Threads puts a timestamp next to the author. There is no author here, so the
-// company carries that slot and the age of the post sits beside it.
 function relativeTime(iso) {
   if (!iso) return '';
 
@@ -77,7 +75,9 @@ function Post({ post, onCommentAdded, showCompany }) {
             </span>
             <span className="Thread-meta">
               {showCompany && post.company ? `${post.company} · ` : ''}
-              {relativeTime(post.createdAt)}
+              {/* Posts made before sign-in existed have no author on file -
+                  fall back to "Anonymous" rather than showing a gap. */}
+              {post.authorName || 'Anonymous'} · {relativeTime(post.createdAt)}
             </span>
           </div>
 

@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from 'react-router-dom';
 import HomePage from './HomePage';
 import CompanyPage from './CompanyPage';
 import ConnectionsPage from './referrals/ConnectionsPage';
+import AccountControl from './auth/AccountControl';
 import './App.css';
 
 // The company is the unit the whole app is organised around: a company page
@@ -12,10 +13,13 @@ function App() {
   return (
     <div className="App">
       <nav className="Nav">
-        <NavLink to="/" end>
-          Companies
-        </NavLink>
-        <NavLink to="/connections">Your connections</NavLink>
+        <div className="Nav-links">
+          <NavLink to="/" end>
+            Companies
+          </NavLink>
+          <NavLink to="/connections">Your connections</NavLink>
+        </div>
+        <AccountControl />
       </nav>
 
       <Routes>

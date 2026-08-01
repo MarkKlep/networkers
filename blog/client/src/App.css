@@ -16,11 +16,19 @@ h1 {
 /* Shared shell for both apps - the blog and the referral finder are separate
    backends, but the user moves between them as one site. */
 .Nav {
+  position: relative;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid #eee;
   margin-bottom: 24px;
   padding-bottom: 8px;
+}
+
+.Nav-links {
+  display: flex;
+  gap: 4px;
 }
 
 .Nav a {
@@ -433,21 +441,41 @@ div.CompanyBadge {
   margin: 0;
 }
 
-/* Replies carry no identity at all - a small dot is enough to anchor the
-   connector line without implying an author the app does not have. */
-.Avatar-reply {
-  width: 10px;
-  height: 10px;
-  background: #d4d4d4;
-  margin-top: 3px;
+/* A real person's avatar (Google photo, or a monogram if there is none -
+   e.g. a comment made before sign-in existed). Sized and positioned so its
+   centre still lands at y=18, where the connector below expects it. */
+.PersonAvatar {
+  border-radius: 50%;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+img.PersonAvatar {
+  object-fit: cover;
+}
+
+div.PersonAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  background: #9ca3af;
+}
+
+.PersonAvatar-reply {
+  width: 20px;
+  height: 20px;
+  margin-top: 8px;
+  font-size: 0.65em;
   position: relative;
   z-index: 1;
 }
 
 /* The connector is drawn as two absolute segments per reply - row top down to
-   the dot's centre (18px), then the dot down to the row's bottom - so
-   consecutive rows join seamlessly however tall their text is. The last reply
-   omits the lower half, ending the thread on the dot. */
+   the avatar's centre (18px), then the avatar down to the row's bottom - so
+   consecutive rows join seamlessly however tall their text is. The last
+   reply omits the lower half, ending the thread on the avatar. */
 .Reply .Thread-gutter {
   position: relative;
 }
@@ -672,13 +700,14 @@ button {
   transition: opacity 0.12s, background 0.12s;
 }
 
-/* Excludes .Chip and .Replace: both are buttons but styled as pills/links
-   with their own hover treatment, not the solid black primary buttons this
-   rule is for. Without the exclusion, this wins on specificity over
-   .Chip:hover (element + :not() + :hover beats class + :hover) and silently
-   overrides its background - which is what made Chip's hover text
-   unreadable: near-black text left over a now-black background. */
-button:not(.Chip):not(.Replace):not(:disabled):hover {
+/* Excludes every button styled as a pill/link with its own hover treatment,
+   not the solid black primary buttons this rule is for. Without an
+   exclusion, this wins on specificity over e.g. .Chip:hover (element +
+   :not() + :hover beats class + :hover) and silently overrides its
+   background - near-black text left over a now-black background, invisible.
+   Any new text/link-styled button needs adding here too, or it inherits the
+   same bug. */
+button:not(.Chip):not(.Replace):not(.Account-signout):not(.AuthPanel-toggle):not(:disabled):hover {
   background: #000;
 }
 
@@ -689,3 +718,207 @@ button:disabled {
 
 /* The composer's reply button is small on purpose and must not inherit the
    full-size minimums above. */
+
+/* --- Auth: nav account control, sign-in prompts, comment authorship --- */
+
+.Account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.Account-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.Account-name {
+  font-size: 0.9em;
+  color: #333;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Account-signout {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.8em;
+  cursor: pointer;
+  padding: 0;
+  min-height: auto;
+  text-decoration: underline;
+}
+
+.Account-signout:hover {
+  color: #1a1a1a;
+  background: none;
+}
+
+/* Shown in place of the post/comment form - not a modal, not a blocker on
+   the rest of the page, since reading never required signing in. */
+.SignInPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.SignInPrompt p {
+  margin: 0;
+  color: #555;
+  font-size: 0.9em;
+}
+
+/* Column, not row: the toggle button sits on its own line so the panel it
+   reveals (a whole form + Google button) drops cleanly below it instead of
+   trying to squeeze in beside it. */
+.SignInPrompt-inline {
+  align-items: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  gap: 8px;
+}
+
+.SignInPrompt-inline > .Replace {
+  font-size: 0.85em;
+}
+
+.Reply-author {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #1a1a1a;
+  margin-bottom: 1px;
+}
+
+.CommentCreate-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.CommentCreate-form input {
+  flex: 1;
+}
+
+/* --- Sign-in panel (Google + email/password), used in the nav and inline --- */
+
+.Account-signin {
+  font-size: 0.9em;
+  min-height: 32px;
+  padding: 5px 12px;
+}
+
+.Account-panel {
+  position: absolute;
+  right: 16px;
+  top: 56px;
+  z-index: 10;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  width: 240px;
+}
+
+.AuthPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.AuthPanel-divider {
+  color: #aaa;
+  font-size: 0.8em;
+  align-self: center;
+}
+
+.AuthPanel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.AuthPanel-form input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.AuthPanel-form button {
+  align-self: stretch;
+}
+
+.AuthPanel-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.8em;
+  cursor: pointer;
+  padding: 0;
+  min-height: auto;
+  text-decoration: underline;
+  align-self: center;
+}
+
+.AuthPanel-toggle:hover {
+  color: #1a1a1a;
+  background: none;
+}
+
+/* --- Connections table --- */
+
+.ConnectionsTable-wrap {
+  overflow-x: auto;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.ConnectionsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.ConnectionsTable th,
+.ConnectionsTable td {
+  text-align: left;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.ConnectionsTable th {
+  background: #fafafa;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #eee;
+}
+
+.ConnectionsTable tbody tr:not(:last-child) td {
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.ConnectionsTable tbody tr:hover {
+  background: #fafafa;
+}
+
+.ConnectionsTable-empty {
+  color: #bbb;
+}

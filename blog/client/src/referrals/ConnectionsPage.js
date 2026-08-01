@@ -1,26 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConnectionsUpload from './ConnectionsUpload';
+import ConnectionsTable from './ConnectionsTable';
 import CompanyBadge from '../CompanyBadge';
 import { REFERRALS_URL } from '../config';
 
-// Managing the imported LinkedIn export. Searching a specific company happens
-// on the company page instead, so this is just "what have I loaded, and where
-// do I already know someone".
+// Managing the imported LinkedIn export: what's loaded, which companies you
+// have people at (chips - each navigates to that company page, where
+// connections and discussion sit together), and the full list as a
+// filterable table for scanning/searching across everyone at once.
 function ConnectionsPage() {
   const navigate = useNavigate();
   const [status, setStatus] = useState(null);
   const [replacing, setReplacing] = useState(false);
   const [companies, setCompanies] = useState([]);
+  const [connections, setConnections] = useState([]);
+  const [filter, setFilter] = useState('');
 
   const load = useCallback(async () => {
-    const [statusRes, companiesRes] = await Promise.all([
+    const [statusRes, companiesRes, connectionsRes] = await Promise.all([
       fetch(`${REFERRALS_URL}/status`),
       fetch(`${REFERRALS_URL}/companies`),
+      fetch(`${REFERRALS_URL}/connections`),
     ]);
     setStatus(await statusRes.json());
-    const data = await companiesRes.json();
-    setCompanies(data.companies || []);
+    setCompanies((await companiesRes.json()).companies || []);
+    setConnections((await connectionsRes.json()).connections || []);
   }, []);
 
   useEffect(() => {
@@ -31,6 +36,16 @@ function ConnectionsPage() {
     setReplacing(false);
     load();
   };
+
+  // Client-side, over the whole list already in memory - a LinkedIn export
+  // tops out around a few thousand rows at most, so there's no need for a
+  // server round trip per keystroke the way /search (a different, ranked
+  // "best match" query) is built for.
+  const filtered = useMemo(() => {
+    const needle = filter.trim().toLowerCase();
+    if (!needle) return connections;
+    return connections.filter((person) => (person.company || '').toLowerCase().includes(needle));
+  }, [connections, filter]);
 
   if (!status) {
     return <p className="Empty">Loading…</p>;
@@ -72,6 +87,23 @@ function ConnectionsPage() {
                 </button>
               ))}
             </div>
+          </section>
+
+          <section>
+            <h2>All connections</h2>
+            <input
+              className="Search"
+              type="text"
+              placeholder="Filter by company"
+              aria-label="Filter by company"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+            <div className="Count">
+              {filtered.length} of {connections.length}
+              {filter.trim() && ` at "${filter.trim()}"`}
+            </div>
+            <ConnectionsTable connections={filtered} />
           </section>
         </>
       )}
