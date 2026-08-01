@@ -1,0 +1,63 @@
+# This repo is Node + Python, so it is checked with Node and Python tooling.
+# (It previously used the Deno starter workflow, which failed on every push:
+# `deno lint` rejects Node globals like `process`, which this Express code
+# legitimately uses.)
+
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node services
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      # Catches syntax errors without needing each service's dependencies
+      # installed - the whole repo is checked in a couple of seconds.
+      - name: Syntax-check services
+        run: |
+          for service in event-bus posts comments moderation; do
+            node --check "blog/$service/index.js"
+          done
+          node --check referrals/index.js
+
+      - name: Client tests
+        working-directory: blog/client
+        run: |
+          npm ci
+          CI=true npm test -- --watchAll=false
+
+  python:
+    name: Query service
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        working-directory: blog/query
+        run: pip install -r requirements.txt
+
+      # Importing exercises the FastAPI app definition and every route
+      # decorator, so a broken handler signature fails here.
+      - name: Import check
+        working-directory: blog/query
+        run: python -c "import main; print('query service imports OK')"

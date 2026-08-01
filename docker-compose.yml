@@ -13,6 +13,8 @@ services:
     build: ./blog/query
     ports:
       - "4002:4002"
+    volumes:
+      - ./blog/query/data:/app/data
     networks:
       - blog-network
 
@@ -33,6 +35,8 @@ services:
       - "3000:3000"
     environment:
       - EVENT_BUS_URL=http://event-bus:4005
+    volumes:
+      - ./blog/posts/data:/app/data
     depends_on:
       - event-bus
     networks:
@@ -44,6 +48,8 @@ services:
       - "4000:4000"
     environment:
       - EVENT_BUS_URL=http://event-bus:4005
+    volumes:
+      - ./blog/comments/data:/app/data
     depends_on:
       - event-bus
     networks:
@@ -57,6 +63,18 @@ services:
       - query
       - posts
       - comments
+      - referrals
+    networks:
+      - blog-network
+
+  # Backend for the client's /referrals page. Deliberately not on the event
+  # bus - it shares no data with the blog, only the frontend.
+  referrals:
+    build: ./referrals
+    ports:
+      - "4006:4006"
+    volumes:
+      - ./referrals/data:/app/data
     networks:
       - blog-network
 

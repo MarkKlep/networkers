@@ -1,1 +1,15 @@
 node_modules/
+
+# Your saved LinkedIn connections - contains real people's names and email
+# addresses. Never commit this.
+referrals/data/
+
+# Local SQLite data for posts, comments, and query - each service's own
+# database file, not meant to be shared via git.
+blog/posts/data/
+blog/comments/data/
+blog/query/data/
+
+# Personal Claude Code settings for this project (permissions, hooks) -
+# .claude/agents/ is shared, this file isn't.
+.claude/settings.local.json
