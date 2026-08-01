@@ -6,7 +6,9 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const EVENT_BUS_URL = 'http://localhost:4005';
+// Docker Compose sets this to the container name (http://event-bus:4005);
+// running locally with npm falls back to localhost.
+const EVENT_BUS_URL = process.env.EVENT_BUS_URL || 'http://localhost:4005';
 
 // Placeholder word/phrase lists for a placeholder moderation check - swap
 // for a real provider/library if this ever needs to be more than a demo.

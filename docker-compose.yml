@@ -1,0 +1,65 @@
+services:
+  event-bus:
+    build: ./blog/event-bus
+    ports:
+      - "4005:4005"
+    environment:
+      - QUERY_URL=http://query:4002
+      - MODERATION_URL=http://moderation:4003
+    networks:
+      - blog-network
+
+  query:
+    build: ./blog/query
+    ports:
+      - "4002:4002"
+    networks:
+      - blog-network
+
+  moderation:
+    build: ./blog/moderation
+    ports:
+      - "4003:4003"
+    environment:
+      - EVENT_BUS_URL=http://event-bus:4005
+    depends_on:
+      - event-bus
+    networks:
+      - blog-network
+
+  posts:
+    build: ./blog/posts
+    ports:
+      - "3000:3000"
+    environment:
+      - EVENT_BUS_URL=http://event-bus:4005
+    depends_on:
+      - event-bus
+    networks:
+      - blog-network
+
+  comments:
+    build: ./blog/comments
+    ports:
+      - "4000:4000"
+    environment:
+      - EVENT_BUS_URL=http://event-bus:4005
+    depends_on:
+      - event-bus
+    networks:
+      - blog-network
+
+  client:
+    build: ./blog/client
+    ports:
+      - "3001:3001"
+    depends_on:
+      - query
+      - posts
+      - comments
+    networks:
+      - blog-network
+
+networks:
+  blog-network:
+    driver: bridge

@@ -10,9 +10,14 @@ app.use(cors());
 // about. Add an entry here whenever a new service needs to receive
 // broadcasts - and list only the types it actually consumes, so a service
 // never receives back the very event it just published.
+// Docker Compose sets these to container names (http://query:4002);
+// running locally with npm falls back to localhost.
+const QUERY_URL = process.env.QUERY_URL || 'http://localhost:4002';
+const MODERATION_URL = process.env.MODERATION_URL || 'http://localhost:4003';
+
 const SUBSCRIBERS = [
-  { url: 'http://localhost:4002/events', events: ['PostCreated', 'CommentCreated', 'CommentModerated'] }, // query
-  { url: 'http://localhost:4003/events', events: ['CommentCreated'] }, // moderation
+  { url: `${QUERY_URL}/events`, events: ['PostCreated', 'CommentCreated', 'CommentModerated'] }, // query
+  { url: `${MODERATION_URL}/events`, events: ['CommentCreated'] }, // moderation
 ];
 
 app.post('/events', (req, res) => {
