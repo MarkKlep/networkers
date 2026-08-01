@@ -5,93 +5,687 @@
 }
 
 h1 {
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
-.PostCreate {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.PostCreate input {
-  flex: 1;
-}
-
-.PostList-empty {
+.subtitle {
   color: #666;
+  margin-top: 0;
 }
 
-.Post {
-  border: 1px solid #ddd;
+/* Shared shell for both apps - the blog and the referral finder are separate
+   backends, but the user moves between them as one site. */
+.Nav {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+}
+
+.Nav a {
+  color: #555;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.Nav a:hover {
+  background: #f4f4f4;
+  color: #1a1a1a;
+  text-decoration: none;
+}
+
+.Nav a.active {
+  background: #333;
+  color: white;
+}
+
+/* --- Referral finder --- */
+
+.Drop {
+  display: block;
+  border: 2px dashed #ccc;
   border-radius: 8px;
-  padding: 16px;
+  padding: 32px 16px;
+  text-align: center;
+  color: #666;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.Drop:hover,
+.Drop-active {
+  border-color: #2563eb;
+  background: #f5f8ff;
+}
+
+.Drop input {
+  display: none;
+}
+
+.Help {
+  font-size: 0.875em;
+  color: #666;
+  background: #f7f7f7;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+.Help code {
+  background: #e8e8e8;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+.Loaded {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.Error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 6px;
+  padding: 12px 16px;
   margin-bottom: 16px;
   text-align: left;
 }
 
-.Post h3 {
-  margin-top: 0;
+.Search {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1.05em;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin: 16px 0 8px;
 }
 
-.CommentList {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0;
+.Search:focus {
+  outline: none;
+  border-color: #2563eb;
 }
 
-.CommentList li {
-  padding: 6px 0;
-  border-top: 1px solid #eee;
-}
-
-.CommentList-empty {
-  color: #999;
+.Count {
+  color: #666;
   font-size: 0.9em;
+  margin-bottom: 8px;
+  text-align: left;
 }
 
+.Person {
+  border-top: 1px solid #eee;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.Person-name {
+  font-weight: 600;
+}
+
+.Person-role {
+  color: #444;
+}
+
+.Person-meta {
+  color: #888;
+  font-size: 0.875em;
+  margin-top: 2px;
+}
+
+.Person-meta a {
+  color: #2563eb;
+}
+
+.Chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.Chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ddd;
+  background: white;
+  color: #333;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.875em;
+  cursor: pointer;
+  min-height: 32px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.Chip:hover {
+  border-color: #1a1a1a;
+  color: #1a1a1a;
+  background: #fafafa;
+}
+
+.Second {
+  border-top: 1px solid #eee;
+  margin-top: 8px;
+  padding-top: 16px;
+  font-size: 0.9em;
+  color: #666;
+  text-align: left;
+}
+
+.Second a {
+  color: #2563eb;
+}
+
+.Replace {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+  font-family: inherit;
+}
+
+.Empty {
+  color: #888;
+  padding: 16px 0;
+  text-align: left;
+}
+
+section {
+  margin-top: 32px;
+}
+
+section h2 {
+  font-size: 1.05em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.Back {
+  display: inline-block;
+  color: #666;
+  text-decoration: none;
+  font-size: 0.9em;
+  margin-bottom: 8px;
+  min-height: 32px;
+  line-height: 32px;
+}
+
+.Back:hover {
+  color: #1d4ed8;
+}
+
+.PostCreate {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.PostCreate-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.PostCreate-row + .PostCreate-row {
+  margin-top: 10px;
+}
+
+.PostCreate input[type='text'] {
+  flex: 1;
+}
+
+/* Segmented control. The real <input type="radio"> stays in the DOM, only
+   visually hidden, so tab/arrow-key navigation and screen readers behave
+   exactly as they would with default radios. */
+.Segments {
+  border: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.Segments-legend {
+  font-size: 0.8em;
+  color: #888;
+  padding: 0;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.Segment input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.Segment span {
+  display: inline-block;
+  padding: 7px 14px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: white;
+  color: #444;
+  font-size: 0.87em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  user-select: none;
+}
+
+.Segment span:hover {
+  border-color: #bbb;
+  background: #fafafa;
+}
+
+.Segment input:checked + span {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+}
+
+.Segment input:focus-visible + span {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* --- Threads-style feed ---------------------------------------------------
+   Flat, not carded: posts are separated by hairlines, never boxes. Every row
+   is a two-column grid - a fixed avatar gutter and the body - so a single
+   connector line can run down the gutter and tie a post to its replies. */
+
+.PostList-empty {
+  color: #999;
+  padding: 24px 0;
+  text-align: left;
+}
+
+.Thread {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 0 12px;
+  text-align: left;
+}
+
+.Thread:first-of-type {
+  border-top: 1px solid #f0f0f0;
+}
+
+.Thread-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  column-gap: 12px;
+}
+
+/* The gutter is a column so the connector can flex to fill whatever height
+   the body next to it happens to be. */
+.Thread-gutter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.Thread-line {
+  flex: 1;
+  width: 2px;
+  background: #e8e8e8;
+  margin: 4px 0 -4px;
+  border-radius: 1px;
+}
+
+.Avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.95em;
+  flex-shrink: 0;
+  color: white;
+  background: #1a1a1a;
+  user-select: none;
+}
+
+/* Tinted by intent, so a thread's purpose is legible before reading it. */
+.Avatar-referral { background: #1d4ed8; }
+.Avatar-question { background: #a16207; }
+.Avatar-offer    { background: #047857; }
+
+/* Company logo, with the monogram as its permanent fallback - same shape and
+   sizing scale for both, so swapping one for the other never shifts layout.
+   Real logos get a white plate + border since favicons are often small
+   transparent-background icons that vanish on a light page otherwise. */
+.CompanyBadge {
+  border-radius: 50%;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+img.CompanyBadge {
+  background: white;
+  border: 1px solid #eee;
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
+}
+
+div.CompanyBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  background: #1a1a1a;
+}
+
+.CompanyBadge-sm {
+  width: 18px;
+  height: 18px;
+  font-size: 0.7em;
+}
+
+.CompanyBadge-md {
+  width: 28px;
+  height: 28px;
+  font-size: 0.85em;
+}
+
+.CompanyBadge-lg {
+  width: 36px;
+  height: 36px;
+  font-size: 0.95em;
+}
+
+.CompanyBadge-xl {
+  width: 56px;
+  height: 56px;
+  font-size: 1.3em;
+}
+
+.CompanyHead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.CompanyHead h1 {
+  margin: 0;
+}
+
+/* Replies carry no identity at all - a small dot is enough to anchor the
+   connector line without implying an author the app does not have. */
+.Avatar-reply {
+  width: 10px;
+  height: 10px;
+  background: #d4d4d4;
+  margin-top: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+/* The connector is drawn as two absolute segments per reply - row top down to
+   the dot's centre (18px), then the dot down to the row's bottom - so
+   consecutive rows join seamlessly however tall their text is. The last reply
+   omits the lower half, ending the thread on the dot. */
+.Reply .Thread-gutter {
+  position: relative;
+}
+
+.Reply .Thread-gutter::before,
+.Reply:not(:last-child) .Thread-gutter::after {
+  content: '';
+  position: absolute;
+  left: 17px;
+  width: 2px;
+  background: #e8e8e8;
+}
+
+.Reply .Thread-gutter::before {
+  top: 0;
+  height: 18px;
+}
+
+.Reply:not(:last-child) .Thread-gutter::after {
+  top: 18px;
+  bottom: 0;
+}
+
+.Avatar-compose {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+  border: 2px dashed #dcdcdc;
+  margin-top: 8px;
+}
+
+.Thread-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.Thread-kind {
+  font-weight: 600;
+  font-size: 0.94em;
+  color: #1a1a1a;
+}
+
+.Thread-meta {
+  font-size: 0.85em;
+  color: #999;
+}
+
+.Thread-text {
+  margin: 0;
+  font-size: 0.97em;
+  line-height: 1.45;
+  color: #1a1a1a;
+  white-space: pre-wrap;
+}
+
+.Thread-count {
+  margin-top: 8px;
+  font-size: 0.85em;
+  color: #999;
+}
+
+/* No row padding: the gutter's connector segments span the full row height,
+   so vertical rhythm comes from the body instead. */
+.Replies .Thread-body {
+  padding: 8px 0;
+}
+
+.Reply .Thread-text {
+  color: #333;
+}
+
+/* A revealed word should read as normal text; the mask is the loud state. */
 .MaskedWord {
   cursor: pointer;
-  background: #fee2e2;
-  color: #991b1b;
-  border-radius: 3px;
-  padding: 0 2px;
+  background: #1a1a1a;
+  color: transparent;
+  border-radius: 4px;
+  padding: 0 3px;
   letter-spacing: -1px;
   user-select: none;
 }
 
 .MaskedWord-revealed {
-  background: transparent;
-  color: inherit;
+  background: #f4f4f4;
+  color: #1a1a1a;
   letter-spacing: normal;
-  text-decoration: underline dotted #991b1b;
 }
 
+/* Quiet composer: a plain line, with the button appearing only once there is
+   something to send. */
 .CommentCreate {
+  margin-top: 12px;
+}
+
+.CommentCreate .Thread-body {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .CommentCreate input {
   flex: 1;
+  border: none;
+  border-bottom: 1px solid #eee;
+  border-radius: 0;
+  padding: 6px 0;
+  font-size: 0.95em;
+  background: transparent;
+  min-height: 30px;
+}
+
+.CommentCreate input:focus {
+  outline: none;
+  border-bottom-color: #1a1a1a;
+}
+
+.CommentCreate button {
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 0.85em;
+  min-height: 30px;
+}
+
+/* --- Controls & affordances ------------------------------------------------
+   One treatment for every link-like thing, and a visible keyboard focus ring
+   on everything interactive. :focus-visible keeps the ring out of the way for
+   mouse users while guaranteeing keyboard users can always see where they
+   are. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+a,
+.Link,
+.Replace {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+a:hover,
+.Link:hover,
+.Replace:hover {
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #1d4ed8;
+}
+
+/* Leaving the app is worth signalling, so the arrow is part of the link and
+   the destination is announced to screen readers. */
+.Link-external {
+  font-weight: 500;
+}
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The nav is the one place a link is a destination tab rather than inline
+   text, so it keeps its own filled treatment. */
+.Nav a.active,
+.Nav a.active:visited {
+  color: white;
+}
+.Second-note {
+  margin: 0 0 6px;
+  color: #888;
+}
+
+/* Chips navigate, so they should feel as clickable as a link while staying
+   real buttons. */
+.SearchForm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.SearchForm .Search {
+  flex: 1;
 }
 
 input {
+  min-height: 38px;
   padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.95em;
+}
+
+input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+input::placeholder {
+  color: #aaa;
 }
 
 button {
-  padding: 6px 12px;
-  border: 1px solid #333;
-  border-radius: 4px;
-  background: #333;
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  background: #1a1a1a;
   color: white;
   cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.12s, background 0.12s;
+}
+
+/* Excludes .Chip and .Replace: both are buttons but styled as pills/links
+   with their own hover treatment, not the solid black primary buttons this
+   rule is for. Without the exclusion, this wins on specificity over
+   .Chip:hover (element + :not() + :hover beats class + :hover) and silently
+   overrides its background - which is what made Chip's hover text
+   unreadable: near-black text left over a now-black background. */
+button:not(.Chip):not(.Replace):not(:disabled):hover {
+  background: #000;
 }
 
 button:disabled {
-  opacity: 0.6;
-  cursor: default;
+  opacity: 0.4;
+  cursor: not-allowed;
 }
+
+/* The composer's reply button is small on purpose and must not inherit the
+   full-size minimums above. */

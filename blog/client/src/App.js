@@ -1,41 +1,28 @@
-import { useEffect, useState, useCallback } from 'react';
-import PostCreate from './PostCreate';
-import PostList from './PostList';
+import { NavLink, Route, Routes } from 'react-router-dom';
+import HomePage from './HomePage';
+import CompanyPage from './CompanyPage';
+import ConnectionsPage from './referrals/ConnectionsPage';
 import './App.css';
 
-const QUERY_URL = 'http://localhost:4002';
-
+// The company is the unit the whole app is organised around: a company page
+// joins the people you know there (referrals service) with what people are
+// asking about it (posts/comments/query services). Those backends share no
+// data and stay decoupled - the client is what composes them.
 function App() {
-  const [posts, setPosts] = useState([]);
-
-  // Merge instead of replace: the query service builds its view from events
-  // it may not have processed yet (e.g. right after a post/comment was just
-  // created), so a fetch can still be missing something we already know
-  // about. Layer the authoritative list on top by id instead of dropping it.
-  const fetchPosts = useCallback(async () => {
-    const response = await fetch(`${QUERY_URL}/posts`);
-    const data = await response.json();
-    setPosts((current) => {
-      const byId = new Map(current.map((post) => [post.id, post]));
-      data.forEach((post) => byId.set(post.id, post));
-      return Array.from(byId.values());
-    });
-  }, []);
-
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
-
-  const handlePostCreated = (post) => {
-    setPosts((current) => [...current, { ...post, comments: [] }]);
-    fetchPosts();
-  };
-
   return (
     <div className="App">
-      <h1>Blog</h1>
-      <PostCreate onCreated={handlePostCreated} />
-      <PostList posts={posts} onCommentAdded={fetchPosts} />
+      <nav className="Nav">
+        <NavLink to="/" end>
+          Companies
+        </NavLink>
+        <NavLink to="/connections">Your connections</NavLink>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/company/:name" element={<CompanyPage />} />
+        <Route path="/connections" element={<ConnectionsPage />} />
+      </Routes>
     </div>
   );
 }
