@@ -65,9 +65,11 @@ Endpoints:
 - `POST /auth/google` — `{ idToken }`; the only place in the app that still verifies a Google ID token, via `google-auth-library`'s `OAuth2Client.verifyIdToken` (signature against Google's public keys, audience, expiry); returns `{ token, user, exp }`
 - `POST /auth/verify` — `Authorization: Bearer <token>` header; verifies this service's own JWT (not Google's) and returns `{ user }` or `401`. This is what `posts`/`comments` call on every write.
 
-`token` is a JWT this service signs itself with `APP_JWT_SECRET`, 7-day expiry. **This secret is real** (unlike the Google client ID below) — anyone who has it can forge a valid session for any user, so it is never hardcoded in source. If `APP_JWT_SECRET` isn't set, `auth/index.js` generates a random one for that run and warns loudly that every restart invalidates every session; set it yourself (`export APP_JWT_SECRET=$(openssl rand -hex 32)`, or in a repo-root `.env` for `docker-compose.yml`) to keep sessions across restarts.
+`token` is a JWT this service signs itself with `APP_JWT_SECRET`, 7-day expiry. **This secret is real** — anyone who has it can forge a valid session for any user, so it is never hardcoded in source. If `APP_JWT_SECRET` isn't set, `auth/index.js` generates a random one for that run and warns loudly that every restart invalidates every session; set it yourself (`export APP_JWT_SECRET=$(openssl rand -hex 32)`, or in a repo-root `.env` for `docker-compose.yml`) to keep sessions across restarts.
 
-The Google **client ID is not a secret** (it's meant to be visible in frontend code) and is hardcoded as a plain constant in two places that must agree: `blog/client/src/config.js` and `auth/index.js`. **To get a real one**: console.cloud.google.com → APIs & Services → Credentials → Create Credentials → OAuth client ID → "Web application" → add `http://localhost:3001` under Authorized JavaScript origins → paste the resulting ID into both files in place of the `YOUR_GOOGLE_CLIENT_ID...` placeholder.
+The Google **client ID is not a secret** in the sense that matters for a backend key — it ships to the browser in the built bundle regardless of where it's read from, so it buys no confidentiality. It still lives in `.env`, not hardcoded in source, so a different client ID per environment is a config change rather than a code change: `auth/.env` (`GOOGLE_CLIENT_ID`, loaded via `dotenv`) and `blog/client/.env` (`REACT_APP_GOOGLE_CLIENT_ID` — CRA only inlines `REACT_APP_`-prefixed vars, and only at dev-server start, so editing `.env` needs a restart to take effect) must both be set to the *same* value, or Google sign-in on the client won't verify against `auth`. `docker-compose.yml` passes both through from a repo-root `.env` (`GOOGLE_CLIENT_ID` and `REACT_APP_GOOGLE_CLIENT_ID`, kept as two keys since one is consumed by a container's `process.env` and the other gets baked into a browser bundle at build/start time). An `.env.example` next to each real `.env` documents the expected keys without committing real values.
+
+**To get a real one**: console.cloud.google.com → APIs & Services → Credentials → Create Credentials → OAuth client ID → "Web application" → add `http://localhost:3001` under Authorized JavaScript origins → put the resulting ID in `auth/.env` and `blog/client/.env` (and the repo-root `.env` if using `docker-compose`), not in source.
 
 Run: `cd auth && npm install && npm run dev` (nodemon).
 
@@ -159,10 +161,29 @@ To start services individually instead (each in its own terminal, from that serv
 - `/` → `HomePage` — search a company, or pick one you already know people at
 - `/company/:name` → `CompanyPage` — **the screen the product is built around**
 - `/connections` → `referrals/ConnectionsPage` — import and manage the LinkedIn export
+- `/practice` → `practice/PracticePage` — DSA practice; the one route with no backend at all (see [Practice](#practice))
 
 `CompanyPage` is where the two halves meet: it queries the referrals service for people you know there *and* the query service for posts about it, then renders them as one page. That join happens **in the client** — the backends share no data and must stay that way. `referrals` is not on the event bus and has no reason to be; unifying the UI is not a reason to couple the services.
 
 Every backend URL lives in `blog/client/src/config.js` rather than being repeated per component. The referrals service therefore has **no UI of its own**; `referrals/public/index.html` is only a pointer to `localhost:3001/referrals`, so there is one interface to maintain instead of two that drift apart.
+
+### Practice
+
+`blog/client/src/practice/` — pick a difficulty (`amateur` / `intermediate` / `advanced`), get a DSA problem, solve it in a Monaco editor, run it against test cases. It is the one part of the app **not** organised around a company, and the only route with **no backend**: problems are a module (`problems.js`), progress and drafts are `localStorage` (`progress.js`), and submitted code executes in the browser.
+
+Three things here are load-bearing:
+
+- **Submitted code runs in a Web Worker** (`runner.js`), built from a Blob URL so it needs no CRA/webpack worker config. This is not about isolation — it is that an infinite loop is the normal failure mode of a half-written solution, and `worker.terminate()` is the only way a browser can interrupt one. The worker is created per run and torn down after (a terminated worker can't be reused). A single case gets 3s, the timer resetting after each case, so a timeout can name the case that hung. Moving execution to a backend judge later means rewriting this file only — the UI is written against its result shape, not against workers.
+- **A problem is more than prose.** `functionName` + `starterCode` are the contract the harness calls into (`new Function(code + 'return <functionName>')`), and `tests[].visible` splits the two run modes: **Run** executes only the cases printed in the statement, **Submit** executes those plus the hidden ones and is what marks the problem solved. Adding a problem should be data entry — if it needs a code change, the shape is wrong. Reference solutions are not stored; hand-typed `expected` values are the thing most likely to be wrong in a new problem, so verify a new one against a real solution before committing it.
+- **Monaco is loaded lazily** (`CodeEditor.js` → `MonacoEditor.js`) with a plain `<textarea>` as the Suspense fallback. Both halves matter: it keeps ~2.5MB out of the initial bundle (`main.js` grew 40 bytes), and a static import would pull monaco's untranspiled ESM into every Jest run that mounts `App`, breaking `npm test`. Monaco is bundled from `node_modules` rather than @monaco-editor/react's default CDN, so practice works offline; its worker paths go through monaco-editor's exports map (`monaco-editor/editor/editor.worker.js`), which roots them at `esm/vs`.
+
+`App.js` widens its shell (`App-wide`) on `/practice` because the workspace puts a statement and an editor side by side; the level picker and problem list opt back into the normal column with `Practice-intro`. Note that any new text- or pill-styled button in here must be added to the `:not(...)` chain on the global `button:hover` rule in `App.css`, or it silently loses its own background on hover — the same trap that rule already documents.
+
+### Look and feel
+
+Colours are CSS custom properties in `:root` at the top of `App.css` — `--bg` (the grey page), `--surface` (white panels), `--line`, and the accent set. **One accent carries every interactive thing** (links, buttons, selected states, focus rings) so "this responds to me" is one learnable signal; green and red are reserved for *outcomes* — a passing test, an error — and never mark something clickable. That is why the practice Submit button is not green. There are two oranges on purpose: `--accent` is dark enough to clear 4.5:1 as text on white and under white button text, `--accent-ring` is the brighter one and is only ever used for borders, outlines and rings. New colour anywhere should come from these variables rather than a fresh hex.
+
+The nav renders **outside** the `.App` container (`NavBar` in `App.js`) so it holds one width on every route — otherwise it would snap between the wide practice shell and the 640px reading column as you navigate. `.Nav` is width-capped and centred inside that full-bleed white band.
 
 ### Company logos
 
