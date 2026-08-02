@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -12,14 +14,22 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Must match blog/client/src/config.js's GOOGLE_CLIENT_ID exactly. This is
-// now the *only* service that verifies Google tokens - posts/comments used
-// to each do this themselves, which meant three files had to agree on this
-// value and each carried the whole google-auth-library dependency. Centralizing
-// here means posts/comments only ever need to trust this service, not Google
-// directly, and adding a second sign-in method (below) didn't mean teaching
-// two more services how to do it.
-const GOOGLE_CLIENT_ID = '349482072247-pr6bgglll5eo5mkqjobc04q6lsbb5m52.apps.googleusercontent.com';
+// Must match blog/client/src/config.js's REACT_APP_GOOGLE_CLIENT_ID exactly -
+// same value, read from each side's own .env (see .env.example here and in
+// blog/client/). This is the *only* service that verifies Google tokens -
+// posts/comments used to each do this themselves, which meant three files had
+// to agree on this value and each carried the whole google-auth-library
+// dependency. Centralizing here means posts/comments only ever need to trust
+// this service, not Google directly, and adding a second sign-in method
+// (below) didn't mean teaching two more services how to do it.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+if (!GOOGLE_CLIENT_ID) {
+    console.warn(
+        'GOOGLE_CLIENT_ID is not set - Google sign-in will fail verification. ' +
+        'Set it in auth/.env (see auth/.env.example) to the same value as ' +
+        "blog/client/.env's REACT_APP_GOOGLE_CLIENT_ID."
+    );
+}
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // Unlike GOOGLE_CLIENT_ID, this is a real secret - anyone who has it can

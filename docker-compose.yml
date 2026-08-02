@@ -72,15 +72,22 @@ services:
       - "4007:4007"
     environment:
       - APP_JWT_SECRET=${APP_JWT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     volumes:
       - ./auth/data:/app/data
     networks:
       - blog-network
 
+  # REACT_APP_GOOGLE_CLIENT_ID must equal auth's GOOGLE_CLIENT_ID above - both
+  # read from the same repo-root .env. The client Dockerfile runs `npm start`
+  # (the CRA dev server), which reads process.env at compile time, so passing
+  # it here works the same way a local `blog/client/.env` does for `npm run dev`.
   client:
     build: ./blog/client
     ports:
       - "3001:3001"
+    environment:
+      - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID:-}
     depends_on:
       - query
       - posts
