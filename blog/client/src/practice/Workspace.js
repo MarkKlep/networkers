@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import CodeEditor from './CodeEditor';
 import ProblemPane from './ProblemPane';
 import ResultsPanel from './ResultsPanel';
+import TutorPanel from './TutorPanel';
 import { runTests } from './runner';
-import { clearDraft, loadDraft, markSolved, saveDraft } from './progress';
+import { promptProblem, requestReview, summariseResult } from './tutor';
+import { clearDraft, loadChat, loadDraft, markSolved, saveDraft } from './progress';
 
 // The solve screen: statement on the left, editor and results on the right.
 //
@@ -20,6 +22,15 @@ function Workspace({ problem, problems, solvedIds, onSolved, onSelect, onBack })
   const [activeIndex, setActiveIndex] = useState(0);
   const [split, setSplit] = useState(42);
   const paneRef = useRef(null);
+
+  // The coach's conversation lives here rather than inside TutorPanel because
+  // the review reads it as evidence of how the solution was reached, and this
+  // is the component that knows when a submit happened.
+  const [messages, setMessages] = useState(() => loadChat(problem.id));
+  const [tutorOpen, setTutorOpen] = useState(true);
+  const [review, setReview] = useState(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState('');
 
   useEffect(() => {
     saveDraft(problem.id, code);
@@ -55,8 +66,33 @@ function Workspace({ problem, problems, solvedIds, onSolved, onSelect, onBack })
         markSolved(problem.id);
         onSolved(problem.id);
       }
+
+      // Every submit gets reviewed, passing or failing - a wrong answer is
+      // where feedback is worth the most. A fatal error is the exception:
+      // there is no solution to review, only a syntax error the results panel
+      // already reported.
+      if (nextMode === 'submit' && !outcome.fatal) {
+        setReview(null);
+        setReviewError('');
+        setReviewing(true);
+        setTutorOpen(true);
+        try {
+          setReview(
+            await requestReview({
+              problem: promptProblem(problem),
+              code,
+              result: summariseResult(outcome),
+              transcript: messages,
+            })
+          );
+        } catch (err) {
+          setReviewError(err.message);
+        } finally {
+          setReviewing(false);
+        }
+      }
     },
-    [code, problem, onSolved]
+    [code, problem, onSolved, messages]
   );
 
   // Cmd/Ctrl+Enter runs and Cmd/Ctrl+Shift+Enter submits - the shortcut every
@@ -107,6 +143,14 @@ function Workspace({ problem, problems, solvedIds, onSolved, onSelect, onBack })
           ← All {problem.level} problems
         </button>
         <div className="Workspace-actions">
+          <button
+            type="button"
+            className={`Workspace-coach ${tutorOpen ? 'Workspace-coach-on' : ''}`}
+            aria-pressed={tutorOpen}
+            onClick={() => setTutorOpen((open) => !open)}
+          >
+            Coach
+          </button>
           <button type="button" className="Workspace-reset" onClick={reset}>
             Reset
           </button>
@@ -180,6 +224,24 @@ function Workspace({ problem, problems, solvedIds, onSolved, onSelect, onBack })
             onSelectCase={setActiveIndex}
           />
         </div>
+
+        {/* A column of its own rather than a tab beside the results: when a
+            submit comes back wrong, the failing case and the coach's read on it
+            are the two things you want side by side. */}
+        {tutorOpen && (
+          <div className="Workspace-tutor">
+            <TutorPanel
+              problem={problem}
+              code={code}
+              result={summariseResult(result)}
+              messages={messages}
+              onMessages={setMessages}
+              review={review}
+              reviewing={reviewing}
+              reviewError={reviewError}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

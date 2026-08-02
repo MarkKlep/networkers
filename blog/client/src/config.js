@@ -16,6 +16,11 @@ export const REFERRALS_URL = 'http://localhost:4006';
 // client does everything else, over HTTP.
 export const AUTH_URL = 'http://localhost:4007';
 
+// Practice's AI coach. The only backend the practice feature has - problems,
+// drafts and progress are all still client-side. It proxies to a model running
+// locally under Ollama, so nothing it is sent leaves the machine.
+export const TUTOR_URL = 'http://localhost:4008';
+
 // Google Sign-In client ID. Not a secret in the sense that matters for a
 // backend key - it ships to the browser in the built bundle either way, so an
 // attacker reading it from here learns nothing they couldn't get from the

@@ -7,6 +7,36 @@ import * as monaco from 'monaco-editor';
 // code at runtime, and a practice session should work with the network off.
 loader.config({ monaco });
 
+// Monaco's built-in `automaticLayout` re-lays-out synchronously inside its own
+// ResizeObserver callback. When that relayout changes geometry the observer is
+// watching, the browser can't deliver every notification in one frame and
+// reports "ResizeObserver loop completed with undelivered notifications" - which
+// CRA's dev-server overlay then throws up as a fatal error over the whole
+// screen. The three-column workspace hits this on every run, since populating
+// the results panel resizes the editor beside it.
+//
+// So `automaticLayout` is off (see options below) and layout is driven here
+// instead, one frame later. Deferring to rAF breaks the cycle: the observer
+// callback returns without touching layout, and the resize lands on a frame
+// where nothing else is pending. The parent is observed rather than Monaco's
+// own container, because the container is the thing Monaco resizes.
+function keepLaidOut(editor) {
+  const node = editor.getContainerDomNode();
+  const target = node.parentElement || node;
+
+  let frame = 0;
+  const observer = new ResizeObserver(() => {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(() => editor.layout());
+  });
+
+  observer.observe(target);
+  editor.onDidDispose(() => {
+    cancelAnimationFrame(frame);
+    observer.disconnect();
+  });
+}
+
 // The language services (completions, diagnostics) normally run in their own
 // worker, and Monaco throws if it is asked for one and no MonacoEnvironment
 // exists. webpack 5 resolves these URLs at build time and emits each worker as
@@ -49,6 +79,7 @@ function MonacoEditor({ value, onChange, readOnly }) {
       theme="vs-dark"
       value={value}
       onChange={(next) => onChange(next ?? '')}
+      onMount={keepLaidOut}
       loading={<div className="Workspace-loading">Loading editor…</div>}
       options={{
         readOnly,
@@ -60,7 +91,7 @@ function MonacoEditor({ value, onChange, readOnly }) {
         padding: { top: 12, bottom: 12 },
         smoothScrolling: true,
         renderLineHighlight: 'line',
-        automaticLayout: true,
+        automaticLayout: false, // driven by keepLaidOut above
       }}
     />
   );

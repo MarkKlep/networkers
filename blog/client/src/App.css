@@ -751,7 +751,7 @@ button {
    background - near-black text left over a now-black background, invisible.
    Any new text/link-styled button needs adding here too, or it inherits the
    same bug. */
-button:not(.Chip):not(.Replace):not(.Account-signout):not(.AuthPanel-toggle):not(.Workspace-back):not(.Workspace-reset):not(.Workspace-run):not(.Workspace-submit):not(.Workspace-tab):not(.ProblemList-item):not(.Results-case):not(:disabled):hover {
+button:not(.Chip):not(.Replace):not(.Account-signout):not(.AuthPanel-toggle):not(.Workspace-back):not(.Workspace-reset):not(.Workspace-run):not(.Workspace-submit):not(.Workspace-tab):not(.Workspace-coach):not(.Tutor-clear):not(.ProblemList-item):not(.Results-case):not(:disabled):hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
@@ -1152,6 +1152,263 @@ button:disabled {
   background: var(--accent-soft);
 }
 
+/* A toggle, so it shows its state: filled when the coach column is open. */
+.Workspace-coach {
+  background: var(--surface);
+  color: #666;
+  border: 1px solid #ddd;
+}
+
+.Workspace-coach:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-ring);
+}
+
+.Workspace-coach-on,
+.Workspace-coach-on:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-ring);
+}
+
+/* --- Coach panel -----------------------------------------------------------
+   A chat and a review card sharing one scroll region, because they are one
+   conversation: the review is the verdict on how that conversation went. */
+
+.Tutor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.Tutor-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.Tutor-title {
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.Tutor-model {
+  font-size: 0.72em;
+  color: #999;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  margin-right: auto;
+}
+
+.Tutor-clear {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 0.78em;
+  padding: 2px 4px;
+  min-height: auto;
+  cursor: pointer;
+}
+
+.Tutor-clear:hover {
+  color: var(--accent);
+  background: none;
+}
+
+.Tutor-log {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.88em;
+  line-height: 1.55;
+}
+
+.Tutor-empty,
+.Tutor-setup {
+  color: #888;
+  font-size: 0.95em;
+}
+
+/* Ollama being absent is the expected first run, so it reads as instructions
+   rather than as an error. */
+.Tutor-setup {
+  background: var(--accent-soft);
+  border: 1px solid #f0d9c6;
+  border-radius: 6px;
+  padding: 10px;
+  color: #7c3a12;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+.Tutor-message {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.Tutor-message-user {
+  align-self: flex-end;
+  max-width: 85%;
+  background: var(--accent);
+  color: white;
+  border-radius: 10px 10px 2px 10px;
+  padding: 7px 11px;
+}
+
+.Tutor-message-assistant {
+  color: #333;
+}
+
+/* Marks the live end of a streaming reply so a pause reads as thinking rather
+   than as a finished answer. */
+.Tutor-caret {
+  display: inline-block;
+  width: 6px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent-ring);
+  animation: Tutor-blink 1s steps(2, start) infinite;
+}
+
+@keyframes Tutor-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.Tutor-reviewing {
+  color: #888;
+  font-style: italic;
+}
+
+.Tutor-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.92em;
+}
+
+.Tutor-compose {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.Tutor-compose input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  font-size: 0.88em;
+}
+
+.Tutor-compose button {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 0.85em;
+}
+
+/* --- Review card ----------------------------------------------------------- */
+
+.Review {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fcfbfa;
+}
+
+.Review-head {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
+  margin-bottom: 8px;
+}
+
+.Review-verdict {
+  margin: 0 0 12px;
+  color: #1a1a1a;
+}
+
+.Review-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.Review-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.Review-label {
+  flex: 0 0 80px;
+  color: #777;
+  font-size: 0.9em;
+}
+
+.Review-pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.Review-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e6e2dd;
+}
+
+.Review-pip-on {
+  background: var(--accent-ring);
+}
+
+.Review-complexity {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85em;
+  color: #666;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+
+.Review-section {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.Review-list {
+  margin: 0 0 10px;
+  padding-left: 16px;
+  color: #444;
+  font-size: 0.92em;
+  line-height: 1.55;
+}
+
+.Review-list:last-child {
+  margin-bottom: 0;
+}
+
 /* Sibling-problem tabs. A pill row rather than a dropdown: three problems is
    few enough that every option can stay visible and one click away, and the
    solved check makes progress through the level legible at a glance. */
@@ -1232,11 +1489,19 @@ button:disabled {
   padding-right: 20px;
 }
 
+/* Takes whatever the statement pane and the coach column leave behind, so the
+   drag handle only has to move one width. */
 .Workspace-right {
-  width: calc(100% - var(--split, 42%));
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.Workspace-tutor {
+  flex: 0 0 340px;
+  min-width: 0;
+  padding-left: 16px;
 }
 
 /* Wide enough to grab, but only the hairline is drawn - a thick bar between
@@ -1547,6 +1812,13 @@ button:disabled {
 
   .Workspace-divider {
     display: none;
+  }
+
+  .Workspace-tutor {
+    flex: none;
+    padding-left: 0;
+    height: 420px;
+    margin-top: 12px;
   }
 
   .Results {

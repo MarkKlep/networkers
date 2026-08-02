@@ -94,6 +94,24 @@ services:
       - comments
       - auth
       - referrals
+      - tutor
+    networks:
+      - blog-network
+
+  # Practice's AI coach. Not on the event bus and shares no data with anything
+  # else - it only proxies to a model. OLLAMA_URL points at the *host's* Ollama
+  # rather than a container: the model is a separate program the user installs
+  # and runs themselves, and pulling multi-GB weights into a container image
+  # would be far worse than reaching out to the one they already have.
+  tutor:
+    build: ./tutor
+    ports:
+      - "4008:4008"
+    environment:
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - TUTOR_MODEL=${TUTOR_MODEL:-qwen2.5-coder:7b}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - blog-network
 

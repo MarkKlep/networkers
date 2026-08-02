@@ -24,7 +24,8 @@ This repo (`py-macos`) is currently a loose collection of learning/practice mate
 - `blog/` — a microservices exercise: six independent projects (four Node/npm services, one Python service, one React client) wired together over HTTP. Each must be installed and run separately, and `blog/query` uses a different toolchain (Python/pip) than the rest (Node/npm).
 - `referrals/` — a backend service for the client's `/referrals` page. It shares **no data** with `blog/` and is deliberately not on the event bus; only the frontend is shared (see below).
 - `auth/` — owns user accounts and sign-in (Google + email/password); see [Authentication](#authentication). Not on the event bus either.
-- `docker-compose.yml` — builds and runs everything (all six `blog/` services, `auth`, and `referrals`) from per-service `Dockerfile`s.
+- `tutor/` — Practice's AI coach; proxies to a model running locally under Ollama. Not on the event bus, shares no data with anything else.
+- `docker-compose.yml` — builds and runs everything (all six `blog/` services, `auth`, `referrals`, and `tutor`) from per-service `Dockerfile`s.
 
 There's a root `package.json`, but it's a convenience runner only (`concurrently`), not a monorepo/workspace setup — each subproject still has its own dependencies and is its own working directory for install/run/test purposes.
 
@@ -146,11 +147,11 @@ Commands (from `blog/client/`):
 
 ## Running the full stack
 
-`npm install && npm run dev` from the repo root starts all **eight** processes at once (the six `blog/` services, `auth`, and `referrals`, via `concurrently`) with color-coded, prefixed output, and a single Ctrl+C stops everything cleanly. Requires `blog/query`'s venv to already be set up (see below) and each subproject's own `npm install` to have been run at least once.
+`npm install && npm run dev` from the repo root starts all **nine** processes at once (the six `blog/` services, `auth`, `referrals`, and `tutor`, via `concurrently`) with color-coded, prefixed output, and a single Ctrl+C stops everything cleanly. Requires `blog/query`'s venv to already be set up (see below) and each subproject's own `npm install` to have been run at least once.
 
-`npm run stop` frees every port the stack uses (3000, 3001, 4000, 4002, 4003, 4005, 4006, 4007). Needed because a nodemon child can outlive its parent, so a crashed or force-killed run can leave a port held.
+`npm run stop` frees every port the stack uses (3000, 3001, 4000, 4002, 4003, 4005, 4006, 4007, 4008). Needed because a nodemon child can outlive its parent, so a crashed or force-killed run can leave a port held.
 
-To start services individually instead (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `auth` (4007) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes and `auth` is up before `posts`/`comments` try to verify a token against it, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
+To start services individually instead (each in its own terminal, from that service's directory): `event-bus` (4005) → `query` (4002) → `moderation` (4003) → `auth` (4007) → `tutor` (4008) → `posts` (3000) → `comments` (4000) → `client` (3001, `npm start`). Order mainly matters so `event-bus` has its subscribers up before anything publishes and `auth` is up before `posts`/`comments` try to verify a token against it, though events are fire-and-forget so a missed event just means a stale read model, not a crash.
 
 `docker-compose up` is the alternative to all of the above: it builds each service from its own `Dockerfile` and needs no local Node, Python, venv, or per-service `npm install`. Ports are published unchanged, so the browser still uses the same `localhost:<port>` URLs either way. `docker-compose down` stops everything.
 
@@ -161,7 +162,7 @@ To start services individually instead (each in its own terminal, from that serv
 - `/` → `HomePage` — search a company, or pick one you already know people at
 - `/company/:name` → `CompanyPage` — **the screen the product is built around**
 - `/connections` → `referrals/ConnectionsPage` — import and manage the LinkedIn export
-- `/practice` → `practice/PracticePage` — DSA practice; the one route with no backend at all (see [Practice](#practice))
+- `/practice` → `practice/PracticePage` — DSA practice, with an AI coach for hints and solution reviews (see [Practice](#practice))
 
 `CompanyPage` is where the two halves meet: it queries the referrals service for people you know there *and* the query service for posts about it, then renders them as one page. That join happens **in the client** — the backends share no data and must stay that way. `referrals` is not on the event bus and has no reason to be; unifying the UI is not a reason to couple the services.
 
@@ -177,7 +178,27 @@ Three things here are load-bearing:
 - **A problem is more than prose.** `functionName` + `starterCode` are the contract the harness calls into (`new Function(code + 'return <functionName>')`), and `tests[].visible` splits the two run modes: **Run** executes only the cases printed in the statement, **Submit** executes those plus the hidden ones and is what marks the problem solved. Adding a problem should be data entry — if it needs a code change, the shape is wrong. Reference solutions are not stored; hand-typed `expected` values are the thing most likely to be wrong in a new problem, so verify a new one against a real solution before committing it.
 - **Monaco is loaded lazily** (`CodeEditor.js` → `MonacoEditor.js`) with a plain `<textarea>` as the Suspense fallback. Both halves matter: it keeps ~2.5MB out of the initial bundle (`main.js` grew 40 bytes), and a static import would pull monaco's untranspiled ESM into every Jest run that mounts `App`, breaking `npm test`. Monaco is bundled from `node_modules` rather than @monaco-editor/react's default CDN, so practice works offline; its worker paths go through monaco-editor's exports map (`monaco-editor/editor/editor.worker.js`), which roots them at `esm/vs`.
 
-`App.js` widens its shell (`App-wide`) on `/practice` because the workspace puts a statement and an editor side by side; the level picker and problem list opt back into the normal column with `Practice-intro`. Note that any new text- or pill-styled button in here must be added to the `:not(...)` chain on the global `button:hover` rule in `App.css`, or it silently loses its own background on hover — the same trap that rule already documents.
+#### The coach (`tutor` service, Express, port 4008)
+
+The one backend Practice has. Problems, drafts, progress and the chat transcript are all still client-side; this service exists only because a model can't run in the browser. Two endpoints, plus `GET /status`:
+
+- `POST /chat` — streams a hint back as Server-Sent Events. Gets the problem, the user's current code, and a summary of the last run, so a hint can point at the actual failing case rather than restate the approach.
+- `POST /review` — fires automatically on **every** Submit, passing or failing (a wrong answer is where feedback is worth most; a *fatal* error is skipped, since there's no solution to review). Returns a normalized `{verdict, scores, complexity, strengths, improvements}`.
+
+Load-bearing details:
+
+- **The model runs locally under Ollama** (`OLLAMA_URL`, `TUTOR_MODEL` in `tutor/.env`). That is the point of this shape: the code you write and the questions you ask never leave the machine, so the claim above — that `companyLogo.js` is the only thing here talking to a third party — stays true. Swapping in a hosted API is a change to `askModel`/`streamModel` in `tutor/index.js` and nothing else; the endpoints and the whole client are written against *their* shape, not Ollama's. **Ollama is a separate program the user installs and starts**, so "not running" is the most likely state, not an edge case — `/status` distinguishes *not running* from *model not pulled*, and the panel prints the fix verbatim.
+- **No `requireUser`**, unlike `posts`/`comments`. Those gate writes because a post is shared; this is a single-user local tool talking to a local model, so there's no shared state to protect and no per-request cost to meter. **If this ever moves to a paid hosted model that changes** — add the `requireUser` middleware from `blog/posts/index.js`.
+- **The hint prompt has an explicit four-rung ladder** and a standing ban on writing the solution. "Give a hint" alone reliably produces the whole answer on the first ask; the ladder is what makes it a practice tool rather than an answer key. The review prompt is deliberately *separate* — a reviewer told to withhold the answer writes uselessly vague feedback, and by review time the attempt is already submitted.
+- **Only `promptProblem(problem)` is sent**, never the whole problem object — that would ship the hidden tests to the model and let it leak them.
+- **`scores.process` is judged only from the transcript**, and is `null` when there was no conversation. Nothing to judge is not the same as a low score, and the card omits the row rather than inventing one.
+- The model's JSON is **normalized server-side** (clamped to 1–5, lists capped, non-strings dropped, outermost `{...}` recovered from prose or a code fence). A small local model will not reliably honour a schema, and the UI shouldn't have to defend against every shape a 7B model can emit.
+
+**Setup:** `brew install ollama`, `ollama serve`, `ollama pull qwen2.5-coder:7b`. Without it everything else in Practice still works — the panel just explains what to start.
+
+`App.js` widens its shell (`App-wide`) on `/practice` because the workspace puts a statement and an editor side by side; the level picker and problem list opt back into the normal column with `Practice-intro`.
+
+Monaco's `automaticLayout` is **off** on purpose: it re-lays-out synchronously inside its own `ResizeObserver` callback, which makes the browser report `ResizeObserver loop completed with undelivered notifications` whenever a resize cascade needs a second frame — and CRA's dev overlay throws that up as a fatal error covering the screen. The three-column workspace triggers it on every run. `keepLaidOut` in `MonacoEditor.js` drives `editor.layout()` from a rAF instead, observing the *parent* (the element Monaco doesn't resize). Turning `automaticLayout` back on brings the overlay back. Note that any new text- or pill-styled button in here must be added to the `:not(...)` chain on the global `button:hover` rule in `App.css`, or it silently loses its own background on hover — the same trap that rule already documents.
 
 ### Look and feel
 
