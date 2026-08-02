@@ -9,9 +9,27 @@ A job-search networking tool organised around **the company you want to work at*
 1. **Name a company.**
 2. **See who you know there** — imported once from your own LinkedIn export, matched against every spelling of that company's name.
 3. **If you know nobody, ask** — post about the company, and read what others have asked.
-4. Practice for the interview you're trying to get, separately, whenever you want — with an AI coach that hints without handing over the answer, and reviews what you wrote.
+4. Practice for the interview you're trying to get, separately, whenever you want.
 
 ![A company page, empty referral state](./screenshots/company.png)
+
+## Practice, with an AI coach
+
+A DSA practice mode with its own local AI coach — ask for a hint while you're stuck, and every submission gets a short review of what worked and what didn't.
+
+![Asking the coach for a hint](./screenshots/practice-coach.png)
+
+The coach runs entirely on your machine via [Ollama](https://ollama.com) — no API key, no cost, nothing sent anywhere. It won't just hand you the answer: it climbs a hint ladder (a question first, then an observation, then the technique, then the shape of the algorithm), only going up a rung if you're still stuck. The review is a separate pass judged on correctness, efficiency, clarity, and — from the conversation, not the code — how much of the ladder you actually needed.
+
+Setup (once):
+
+```
+brew install ollama
+brew services start ollama
+ollama pull qwen2.5-coder:7b
+```
+
+Without Ollama running, Practice still works fully — the coach panel just explains what to start.
 
 ## Screenshots
 
